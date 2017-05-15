@@ -1,0 +1,114 @@
+#!/bin/bash
+set -x
+
+function link-assets() {
+
+  RSYNC_EXCLUDES="--exclude=var/www/html --exclude=initial.sql"
+  RSYNC_OPTS="-Pav"
+
+  rsync $RSYNC_OPTS $RSYNC_EXCLUDES /assets/ /
+
+}
+
+function check-mysql-conn() {
+
+  SOCK_TIMEOUT=1
+  MYSQLD_SOCK="$(rgrep sock /etc/my* | awk -F: '{print $2}'| grep ^socket | grep "mysql\|maria" | awk '{print $NF}'| sort | uniq)"
+  # wait for socket to be ready
+  ( sleep $SOCK_TIMEOUT | socat - UNIX-CONNECT:$MYSQLD_SOCK ) | grep -i "mysql\|maria"
+  return $?
+
+}
+
+function start-mysqld-safe() {
+
+  #MYSQLD_SAFE="mysqld_safe --user mysql --skip-grant-tables"
+  MYSQLD_SAFE="mysqld_safe --user mysql"
+  $MYSQLD_SAFE &
+
+}
+
+function init-mysql-db() {
+
+  if [[ -z "$MYSQL_HOST" ]] || [[ "$MYSQL_HOST" == "localhost" ]]
+  then
+
+    test -z "$MYSQL_DBNAME" && MYSQL_DBNAME=postal
+    test -z "$MYSQL_HOST" && MYSQL_HOST=localhost
+    test -z "$MYSQL_USER" && MYSQL_USER=postal
+    test -z "$MYSQL_PASS" && MYSQL_PASS=p0stalpassw0rd
+
+    if [ ! -e "/var/lib/mysql/$MYSQL_DBNAME" ]
+    then
+
+      if [ ! -e "/var/lib/mysql/mysql" ]
+      then
+        rsync -Pav /var/lib/mysql.dist/ /var/lib/mysql/
+      fi
+
+      chown -R mysql: /var/lib/mysql
+      start-mysqld-safe
+
+      check-mysql-conn
+      while [ $? -ne 0 ]
+      do
+        sleep 1
+        check-mysql-conn
+      done
+
+      echo "CREATE DATABASE \`${MYSQL_DBNAME}\` CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;" | mysql
+      echo "CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASS}';" | mysql
+      echo "GRANT USAGE ON *.* TO '${MYSQL_USER}'@'%';" | mysql
+      echo "GRANT ALL PRIVILEGES ON ${MYSQL_DBNAME}.* TO '${MYSQL_USER}'@'%' WITH GRANT OPTION;" | mysql
+      echo "GRANT ALL PRIVILEGES ON ${MYSQL_DBNAME}-%.* TO '${MYSQL_USER}'@'%' WITH GRANT OPTION;" | mysql
+      echo "SET PASSWORD FOR '$MYSQL_USER'@'%' = PASSWORD(\"$MYSQL_PASS\");" | mysql
+
+      pkill -f mysql
+    else
+      chown -R mysql: /var/lib/mysql
+    fi
+    while [ ! -z "$(pgrep mysqld)" ]; do sleep 1; done
+  else
+    rm -f /etc/supervisor/conf.d/mysql.ini
+  fi
+
+}
+
+function init-rabbitmq-vhost() {
+
+  /usr/sbin/rabbitmq-server &
+  sleep 3
+  rabbitmqctl add_vhost /postal
+  rabbitmqctl add_user postal p0stalpassw0rd
+  rabbitmqctl set_permissions -p /postal postal ".*" ".*" ".*"
+  pkill -f rabbitmq
+
+}
+
+function init-postal-conf() {
+
+  chown -R postal: /opt/postal
+  #if [ $(wc -l /opt/postal/config/postal.yml | awk '{print $1}') -eq 0 ]
+  if [ ! -e /opt/postal/config/postal.yml ]
+  then
+    start-mysqld-safe
+    check-mysql-conn 
+    sudo -i -u postal postal initialize-config
+    sudo -i -u postal postal initialize
+    pkill -f mysqld
+    while [ ! -z "$(pgrep mysqld)" ]; do sleep 1; done
+  fi
+
+}
+
+function leave-supervisord-in-foreground() {
+
+  LOG_DIR=$(grep logfile /etc/supervisor/supervisord.conf | awk -F= '{print $2}' | awk '{print $1}' | sed 's|;||g' | xargs dirname)
+  mkdir -p $LOG_DIR
+  
+  exec supervisord -n -c /etc/supervisor/supervisord.conf
+
+  exec "$@"
+
+
+}

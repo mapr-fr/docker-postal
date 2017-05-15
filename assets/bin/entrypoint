@@ -1,0 +1,13 @@
+#!/bin/bash
+
+source /assets/bin/entrypoint.functions
+
+link-assets
+
+init-mysql-db
+
+init-rabbitmq-vhost
+
+init-postal-conf
+
+leave-supervisord-in-foreground
