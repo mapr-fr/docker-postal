@@ -76,19 +76,24 @@ function init-mysql-db() {
 
 function init-rabbitmq-vhost() {
 
+  test -z "$RABBITMQ_VHOST" && RABBITMQ_VHOST=postal
+  test -z "$RABBITMQ_HOST" && RABBITMQ_HOST=localhost
+  test -z "$RABBITMQ_USER" && RABBITMQ_USER=postal
+  test -z "$RABBITMQ_PASS" && RABBITMQ_PASS=p0stalpassw0rd
+
   /usr/sbin/rabbitmq-server &
   sleep 3
-  rabbitmqctl add_vhost /postal
-  rabbitmqctl add_user postal p0stalpassw0rd
-  rabbitmqctl set_permissions -p /postal postal ".*" ".*" ".*"
+  rabbitmqctl add_vhost /$RABBITMQ_VHOST
+  rabbitmqctl add_user $RABBITMQ_USER $RABBITMQ_PASS
+  rabbitmqctl set_permissions -p /$RABBITMQ_VHOST $RABBITMQ_USER ".*" ".*" ".*"
   pkill -f rabbitmq
 
 }
 
 function init-postal-conf() {
 
+  #TODO: set rabbitmq/mysql docker-provided credentials
   chown -R postal: /opt/postal
-  #if [ $(wc -l /opt/postal/config/postal.yml | awk '{print $1}') -eq 0 ]
   if [ ! -e /opt/postal/config/postal.yml ]
   then
     start-mysqld-safe
