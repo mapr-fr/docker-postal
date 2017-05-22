@@ -82,7 +82,7 @@ function init-rabbitmq-vhost() {
   test -z "$RABBITMQ_PASS" && RABBITMQ_PASS=p0stalpassw0rd
 
   /usr/sbin/rabbitmq-server &
-  sleep 3
+  sleep 10
   rabbitmqctl add_vhost /$RABBITMQ_VHOST
   rabbitmqctl add_user $RABBITMQ_USER $RABBITMQ_PASS
   rabbitmqctl set_permissions -p /$RABBITMQ_VHOST $RABBITMQ_USER ".*" ".*" ".*"
