@@ -25,3 +25,4 @@ services:
       - ${DATA_DIR}/docker-containers-volumes/opt/postal/app/log:/opt/postal/app/log
       - ${DATA_DIR}/docker-containers-volumes/opt/postal/app/public:/opt/postal/app/public
       - ${DATA_DIR}/docker-containers-volumes/opt/postal/config:/opt/postal/config
+
