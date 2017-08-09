@@ -26,9 +26,10 @@ RUN mkdir -p /var/run/mysqld && \
 
 RUN useradd -r -m -d /opt/postal -s /bin/bash postal
 RUN setcap 'cap_net_bind_service=+ep' /usr/bin/ruby2.3
-
+gem install tzinfo-data
 RUN sudo -i -u postal git clone https://github.com/atech/postal /opt/postal/app
 RUN ln -s /opt/postal/app/bin/postal /usr/bin/postal
+RUN echo "gem 'tzinfo-data'" >> /opt/postal/app/Gemfile
 RUN sudo -i -u postal postal bundle /opt/postal/app/vendor/bundle
 
 RUN cp /opt/postal/app/resource/nginx.cfg /etc/nginx/sites-available/default && \
