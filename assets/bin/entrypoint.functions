@@ -102,6 +102,9 @@ function init-postal-conf() {
     sudo -i -u postal postal initialize
     pkill -f mysqld
     while [ ! -z "$(pgrep mysqld)" ]; do sleep 1; done
+
+    sed -i 's/2525/25/' /opt/postal/config/postal.yml
+
   fi
 
 }

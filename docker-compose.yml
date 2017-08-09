@@ -8,7 +8,8 @@ services:
       - net.ipv6.conf.lo.disable_ipv6=1
     ports:
       - "25:25"
-      #- "80:80"
+      - "80:80"
+      - "443:443"
       #- "2525:2525"
     environment:
       - MYSQL_HOST=${MYSQL_HOST}
