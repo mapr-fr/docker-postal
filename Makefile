@@ -15,7 +15,7 @@ clean: docker-current-clean-images docker-current-clean-volumes docker-global-cl
 
 run:
 
-	docker run --rm -p 25:25 -p 2525:25 -p 80:80 -p 443:443 -it /bin/sh
+	docker run -d -p 25:25 -p 2525:25 -p 80:80 -p 443:443 --rm --name $(ALIAS) $(NAME):$(VERSION)
 
 tag_latest:
 
